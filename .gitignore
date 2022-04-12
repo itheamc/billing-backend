@@ -3,12 +3,11 @@
 # Learn more about .gitignore:
 #     https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 
-# Node artifact files
-node_modules/
-dist/
-
-# Compiled Java class files
-*.class
+# Django Files
+db.sqlite3
+migrations/
+venv/
+a_settings.py
 
 # Compiled Python bytecode
 *.py[cod]

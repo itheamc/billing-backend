@@ -1,0 +1,4 @@
+cloudinary==1.29.0
+Django==4.0.3
+djangorestframework==3.13.1
+psycopg2==2.9.3
