@@ -136,5 +136,13 @@ ATTRIBUTE_DELETED = 'Attribute deleted successfully!!'
 ATTRIBUTE_DELETE_FAILED = 'Unable to delete attribute!!'
 ATTRIBUTE_NOT_FOUND = 'Attribute not found!!'
 
+CUSTOMER_NOT_FOUND = 'Customer not found!!'
+CUSTOMER_ADDED = 'Customer added successfully!!'
+CUSTOMER_ADD_FAILED = 'Unable to add customer!!'
+CUSTOMER_UPDATED = 'Customer updated successfully!!'
+CUSTOMER_UPDATE_FAILED = 'Unable to update customer!!'
+CUSTOMER_NAME_OR_PHONE_OR_EMAIL_MISSING = 'Customer name, phone or email is missing!!'
+CUSTOMERS_LIST_RETRIEVED = 'Customers list retrieved successfully!!'
+
 
 
