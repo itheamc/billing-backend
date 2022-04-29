@@ -1,18 +1,15 @@
-from decimal import Decimal
-
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 
 
 # __________________________________@mit__________________________________
 # Address Model
 class Address(models.Model):
-    address_line_1 = models.CharField(max_length=500, blank=False, null=False)
+    address_line_1 = models.CharField(max_length=500)
     address_line_2 = models.CharField(max_length=500, blank=True, null=True)
-    city = models.CharField(max_length=100, blank=False, null=False)
-    state = models.CharField(max_length=100, blank=False, null=False)
-    country = models.CharField(max_length=100, blank=False, null=False)
-    pincode = models.BigIntegerField()
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    country = models.CharField(max_length=100)
+    pincode = models.BigIntegerField(null=True, blank=True)
     latitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, default=None)
     longitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, default=None)
 

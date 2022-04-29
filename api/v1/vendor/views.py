@@ -78,7 +78,7 @@ def add_vendor(request):
             NetworkResponse(status='UNAUTHORIZED', message=UNAUTHORIZED).as_dict,
             status=status.HTTP_401_UNAUTHORIZED)
     except StoreStaff.DoesNotExist:
-        return JsonResponse(NetworkResponse(status='VENDOR_ADD_FAILED', message=VENDOR_ADD_FAILED).as_dict,
+        return JsonResponse(NetworkResponse(status='STAFF_NOT_FOUND', message=STAFF_NOT_FOUND).as_dict,
                             status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return JsonResponse(NetworkResponse(status='WENT_WRONG', message=WENT_WRONG, data={'error': str(e)}).as_dict,
