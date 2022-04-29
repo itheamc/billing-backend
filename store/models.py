@@ -88,6 +88,7 @@ class Store(models.Model):
             'category': self.category.as_dict,
             'address': self.address.as_dict,
             'gstin': self.gstin,
+            'owner': self.staffs.filter(user__is_store_admin=True).first().as_dict,
             'is_active': self.is_active,
             'created_at': self.joined_at,
             'updated_at': self.updated_at

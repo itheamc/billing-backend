@@ -89,10 +89,19 @@ def get_stores(request):
 
 # ----------------------------------@mit----------------------------------
 # View to register a new store
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
 def register_store(request):
-    if request.method == 'POST':
-        try:
+    try:
+        # extract user from request
+        requested_user = request.user
+
+        # Only Casper Admin can register a store
+        # So, checking if the user is a casper admin and is active
+        if requested_user.is_casper_admin and requested_user.is_active:
+
+            # extract store data from request
             store_data = json.loads(request.body)
             user_data = store_data.pop('user')
 
@@ -153,35 +162,6 @@ def register_store(request):
                     NetworkResponse(status='USER_PHONE_ALREADY_EXISTS', message=USER_PHONE_ALREADY_EXISTS).as_dict,
                     status=status.HTTP_400_BAD_REQUEST)
 
-            # Validating password
-            password = user_data.pop('password')
-            confirm_password = user_data.pop('confirm_password')
-
-            # If password is not provided
-            if not password or not confirm_password:
-                return JsonResponse(NetworkResponse(status='PASSWORD_REQUIRED', message=PASSWORD_REQUIRED).as_dict,
-                                    status=status.HTTP_400_BAD_REQUEST)
-
-            # If password and confirm password do not match
-            if not Validators.is_password_equal(password, confirm_password):
-                return JsonResponse(
-                    NetworkResponse(status='PASSWORD_NOT_MATCH', message=PASSWORD_NOT_MATCH).as_dict,
-                    status=status.HTTP_400_BAD_REQUEST)
-
-            # If password is less than 8 characters
-            if len(password) < 8:
-                return JsonResponse(
-                    NetworkResponse(status='PASSWORD_LENGTH_ERROR', message=PASSWORD_LENGTH_ERROR).as_dict,
-                    status=status.HTTP_400_BAD_REQUEST)
-
-            # If password is not strong
-            # i.e. password doesn't contain numbers, lowercase and uppercase letters
-            if not any(char.isdigit() for char in password) or not any(char.isalpha() for char in password) or not any(
-                    char.isupper() for char in password):
-                return JsonResponse(
-                    NetworkResponse(status='PASSWORD_FORMAT_ERROR', message=PASSWORD_FORMAT_ERROR).as_dict,
-                    status=status.HTTP_400_BAD_REQUEST)
-
             # Extracting user email and first name
             first_name = user_data.pop('first_name')
             email = user_data.pop('email')
@@ -199,30 +179,68 @@ def register_store(request):
             store.is_active = True
             store.save()
 
+            # Generating temporary password
+            temp_password = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
+
             # Adding user to the database
             user_data['is_staff'] = True
             user_data['is_store_admin'] = True
-            user = CasperUser.objects.create_user(email=email, password=password, first_name=first_name, **user_data)
+            user_data['is_active'] = True
+            user = CasperUser.objects.create_user(email=email, password=temp_password, first_name=first_name,
+                                                  **user_data)
 
             # Adding staff to the store
             staff = StoreStaff(store=store, user=user)
-            staff.position = 'Store Admin'
+            staff.position = 'Admin'
             staff.save()
-            token = JwtToken.get_tokens_for_user(user)
-            network_response = NetworkResponse(status='STORE_ADDED', message=STORE_ADDED, data={'token': token})
+
+            # Creating Staff Permissions
+            permissions = StaffPermission(staff=staff, manage_catalogues=True, manage_stores=True, manage_vendors=True,
+                                          manage_customers=True, manage_orders=True, manage_reports=True,
+                                          manage_staffs=True, manage_settings=True)
+            permissions.save()
+
+            # sending the temp password with email
+            text_content = f'Hey {first_name}, Welcome to Casper POS. Use this temporary password -  {temp_password} to access your admin panel.'
+            html_content = f'''<div style = "font-family: Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2" >
+                                                        <div style="margin:50px auto;width:70%;padding:20px 0">
+                                                            <div style="border-bottom:1px solid #eee">
+                                                            <a href="" style="font-size:1.4em;color: #00466a;text-decoration:none;font-weight:600">Casper India</a>
+                                                            </div>
+                                                            <p style="font-size:1.1em">Hey {first_name},</p>
+                                                            <p>Welcome to Casper POS. Your store store is successfully registered with our POS system. To access your POS dashboard use the below temporary password. </p>
+                                                            <h3 style="background: #00466a;margin: 0 auto;width: max-content;padding: 0 10px;color: #fff;border-radius: 4px;">{temp_password}</h3>
+                                                            <p style="font-size:0.9em;">Regards,<br />Rajan, Casper India</p>
+                                                            <hr style="border:none;border-top:1px solid #eee" />
+                                                            <div style="float:right;padding:8px 0;color:#aaa;font-size:0.8em;line-height:1;font-weight:300">
+                                                            <p>Casper Technology Services Pvt. Ltd.</p>
+                                                            <p>353 & 354 - 2nd Floor, Ideabox Coworking Varthur Rd,</p>
+                                                            <p>Aswath Nagar, Flyover, before, Kundalahalli, Marathahalli, </p>
+                                                            <p>Bengaluru, Karnataka 560037</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>'''
+            CasperMail.send_multi_alternative_email(
+                subject=f'Welcome to Casper POS System',
+                text_content=text_content,
+                html_content=html_content,
+                to=email)
+
+            # Finally, sending the response
+            network_response = NetworkResponse(status='STORE_ADDED', message=STORE_ADDED, data=store.as_dict)
             return JsonResponse(network_response.as_dict, status=status.HTTP_201_CREATED)
 
-        except StoreCategory.DoesNotExist:
-            return JsonResponse(
-                NetworkResponse(status='STORE_CATEGORY_NOT_FOUND', message=STORE_CATEGORY_NOT_FOUND).as_dict,
-                status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return JsonResponse(
-                NetworkResponse(status='WENT_WRONG', message=WENT_WRONG, data={'error': str(e)}).as_dict,
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    return JsonResponse(NetworkResponse(status='GET_METHOD_NOT_ALLOWED', message=GET_METHOD_NOT_ALLOWED).as_dict,
-                        status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        else:
+            return JsonResponse(NetworkResponse(status='UNAUTHORIZED', message=UNAUTHORIZED).as_dict,
+                                status=status.HTTP_401_UNAUTHORIZED)
+    except StoreCategory.DoesNotExist:
+        return JsonResponse(
+            NetworkResponse(status='STORE_CATEGORY_NOT_FOUND', message=STORE_CATEGORY_NOT_FOUND).as_dict,
+            status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return JsonResponse(
+            NetworkResponse(status='WENT_WRONG', message=WENT_WRONG, data={'error': str(e)}).as_dict,
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ----------------------------------@mit----------------------------------
@@ -366,6 +384,7 @@ def store_login(request):
         try:
             # decode the json data
             data = json.loads(request.body)
+            print(data)
 
             # getting the email and password data from the request
             email = data.get('email')
